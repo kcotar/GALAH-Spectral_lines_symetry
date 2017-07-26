@@ -53,6 +53,10 @@ def _determine_bin_percentage(wvl_obs, wvl_bin, wvl_target, lower=False, upper=F
         return ((wvl_obs + wvl_bin/2.) - wvl_target) / wvl_bin
 
 
+def _ew_partial(flux):
+    return 1. - flux  # not the best option for noisy data, shallow lines and continuum problems
+
+
 def _integrate(spectra, wvl, wvl_bin, wvl_begin, wvl_end):
     ew_integral = 0
     stage = 0
@@ -60,18 +64,18 @@ def _integrate(spectra, wvl, wvl_bin, wvl_begin, wvl_end):
         wvl_obs = wvl[i_p]
         if stage == 0:
             if _is_boundary(wvl_obs, wvl_bin, wvl_begin):
-                boundary_integ = ((1 - spectra[i_p]) * wvl_bin) * _determine_bin_percentage(wvl_obs, wvl_bin, wvl_begin, upper=True)
+                boundary_integ = (_ew_partial(spectra[i_p]) * wvl_bin) * _determine_bin_percentage(wvl_obs, wvl_bin, wvl_begin, upper=True)
                 ew_integral += boundary_integ
                 stage = 1
             else:
                 continue
         elif stage == 1:
             if _is_boundary(wvl_obs, wvl_bin, wvl_end):
-                boundary_integ = ((1 - spectra[i_p]) * wvl_bin) * _determine_bin_percentage(wvl_obs, wvl_bin, wvl_end, lower=True)
+                boundary_integ = (_ew_partial(spectra[i_p]) * wvl_bin) * _determine_bin_percentage(wvl_obs, wvl_bin, wvl_end, lower=True)
                 ew_integral += boundary_integ
                 break
             else:
-                ew_integral += (1 - spectra[i_p]) * wvl_bin
+                ew_integral += _ew_partial(spectra[i_p]) * wvl_bin
     # TODO: how to handle negative EW integrals
     return ew_integral
 
@@ -104,37 +108,44 @@ abs_line_names = [str(line['Element'])+'_{:.4f}'.format(line['line_centre']) for
 empty_nan_line = [np.nan for i_l in range(len(abs_linelist))]
 symmetry_results = Table(np.zeros((len(galah_param), len(abs_linelist))), names=abs_line_names)
 
-for i_g in range(len(galah_param)):
-    galah_object = galah_param[i_g]
-    print 'Reading data for sobject_id: ', galah_object['sobject_id']
-    spectra, wavelength = get_spectra_dr52(str(galah_object['sobject_id']), bands=[1, 2, 3, 4], root=spectra_data_dir)
-    if len(spectra) == 0:
-        symmetry_results[i_g] = empty_nan_line
-        continue
-    print ' - working on spectral absorption lines'
-    for i_l in range(len(abs_linelist)):
-        absorption_line = abs_linelist[i_l]
-        absorption_line_halfwidth = get_line_halfwidth(absorption_line['line_centre'],
-                                                       absorption_line['line_start'], absorption_line['line_end'])
-        i_band = get_band(absorption_line['line_centre'])
-        ew_left, ew_right = integrate_line_halves(spectra[i_band], wavelength[i_band],
-                                                  absorption_line['line_centre'], absorption_line_halfwidth)
-        asymetry = (ew_left - ew_right) / (ew_left + ew_right)
-        symmetry_results[abs_line_names[i_l]][i_g] = asymetry
-
-# add sobject_id column to results
-symmetry_results.add_column(galah_param['sobject_id'])
-# save results
 final_fits = 'symmetry_results.fits'
-if os.path.isfile(final_fits):
-    os.remove(final_fits)
-symmetry_results.write(final_fits)
+if not os.path.isfile(final_fits):
+    for i_g in range(len(galah_param)):
+        galah_object = galah_param[i_g]
+        print 'Reading data for sobject_id: ', galah_object['sobject_id']
+        spectra, wavelength = get_spectra_dr52(str(galah_object['sobject_id']), bands=[1, 2, 3, 4], root=spectra_data_dir)
+        if len(spectra) == 0:
+            symmetry_results[i_g] = empty_nan_line
+            continue
+        print ' - working on spectral absorption lines'
+        for i_l in range(len(abs_linelist)):
+            absorption_line = abs_linelist[i_l]
+            absorption_line_halfwidth = get_line_halfwidth(absorption_line['line_centre'],
+                                                           absorption_line['line_start'], absorption_line['line_end'])
+            i_band = get_band(absorption_line['line_centre'])
+            ew_left, ew_right = integrate_line_halves(spectra[i_band], wavelength[i_band],
+                                                      absorption_line['line_centre'], absorption_line_halfwidth)
+            asymetry = (ew_left - ew_right) / (ew_left + ew_right)
+            symmetry_results[abs_line_names[i_l]][i_g] = asymetry
+
+    # add sobject_id column to results
+    symmetry_results.add_column(galah_param['sobject_id'], index=0)
+    # save results
+    if os.path.isfile(final_fits):
+        os.remove(final_fits)
+    symmetry_results.write(final_fits)
+else:
+    print 'Reading precomputed data'
+    symmetry_results = Table.read(final_fits)
 
 move_to_dir('Plots')
 # plot results as histograms
+print 'Plotting graphs'
 for abs_line in abs_line_names:
     plt.title(abs_line)
-    plt.hist(symmetry_results[abs_line], bins=100, range=(-0.5, 0.5))
+    plt.hist(symmetry_results[abs_line], bins=300, range=(-1, 1.))
+    plt.xlim((-1, 1.))
+    plt.ylim((0, 35000))
     plt.xlabel('Symmetry coefficient value')
     plt.ylabel('Symmetry distribution')
     plt.savefig(abs_line+'.png', dpi=200)
