@@ -141,12 +141,18 @@ else:
 move_to_dir('Plots')
 # plot results as histograms
 print 'Plotting graphs'
+# txt = open('distribution_summary.csv', 'w')
 for abs_line in abs_line_names:
+    print abs_line
     plt.title(abs_line)
-    plt.hist(symmetry_results[abs_line], bins=300, range=(-1, 1.))
-    plt.xlim((-1, 1.))
-    plt.ylim((0, 35000))
+    median_hist = np.nanmedian(symmetry_results[abs_line])
+    hist_vals, hist_bins, _ = plt.hist(symmetry_results[abs_line], bins=300, range=(median_hist - 0.15, median_hist + 0.15))
+    # hist_vals, hist_bins, _ = plt.hist(symmetry_results[abs_line], bins=300, range=(-2, 2.))
+    # plt.xlim((-2, 2.))
+    # plt.ylim((0, 35000))
     plt.xlabel('Symmetry coefficient value')
     plt.ylabel('Symmetry distribution')
-    plt.savefig(abs_line+'.png', dpi=200)
+    plt.savefig(abs_line+'_4.png', dpi=200)
     plt.close()
+    # txt.write(abs_line+' '+str(np.max(hist_vals))+' '+str(np.nanstd(symmetry_results[abs_line]))+' '+str(np.nanmedian(symmetry_results[abs_line]))+'\n')
+# txt.close()
