@@ -106,10 +106,13 @@ abs_linelist = Table.read(galah_data_dir+'GALAH_Cannon_linelist.csv')  # Element
 # Create a Table that will hold results of the analysis
 abs_line_names = [str(line['Element'])+'_{:.4f}'.format(line['line_centre']) for line in abs_linelist]
 empty_nan_line = [np.nan for i_l in range(len(abs_linelist))]
+
+ew_results = Table(np.zeros((len(galah_param), len(abs_linelist))), names=abs_line_names)
 symmetry_results = Table(np.zeros((len(galah_param), len(abs_linelist))), names=abs_line_names)
 
-final_fits = 'symmetry_results.fits'
-if not os.path.isfile(final_fits):
+final_symmetry_fits = 'results_symmetry.fits'
+final_ew_fits = 'results_ew.fits'
+if not os.path.isfile(final_symmetry_fits):
     for i_g in range(len(galah_param)):
         galah_object = galah_param[i_g]
         print 'Reading data for sobject_id: ', galah_object['sobject_id']
@@ -117,7 +120,7 @@ if not os.path.isfile(final_fits):
         if len(spectra) == 0:
             symmetry_results[i_g] = empty_nan_line
             continue
-        print ' - working on spectral absorption lines'
+        # print ' - working on spectral absorption lines'
         for i_l in range(len(abs_linelist)):
             absorption_line = abs_linelist[i_l]
             absorption_line_halfwidth = get_line_halfwidth(absorption_line['line_centre'],
@@ -125,18 +128,25 @@ if not os.path.isfile(final_fits):
             i_band = get_band(absorption_line['line_centre'])
             ew_left, ew_right = integrate_line_halves(spectra[i_band], wavelength[i_band],
                                                       absorption_line['line_centre'], absorption_line_halfwidth)
+            # compute observed parameters
+            ew = (ew_left + ew_right)
             asymetry = (ew_left - ew_right) / (ew_left + ew_right)
+            # save to final table(s)
+            ew_results[abs_line_names[i_l]][i_g] = ew
             symmetry_results[abs_line_names[i_l]][i_g] = asymetry
 
     # add sobject_id column to results
     symmetry_results.add_column(galah_param['sobject_id'], index=0)
     # save results
-    if os.path.isfile(final_fits):
-        os.remove(final_fits)
-    symmetry_results.write(final_fits)
+    if os.path.isfile(final_symmetry_fits):
+        os.remove(final_symmetry_fits)
+        os.remove(final_ew_fits)
+    symmetry_results.write(final_symmetry_fits)
+    ew_results.write(final_ew_fits)
 else:
     print 'Reading precomputed data'
-    symmetry_results = Table.read(final_fits)
+    symmetry_results = Table.read(final_symmetry_fits)
+    ew_results = Table.read(final_ew_fits)
 
 move_to_dir('Plots')
 # plot results as histograms
