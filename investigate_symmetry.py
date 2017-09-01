@@ -156,13 +156,35 @@ for abs_line in abs_line_names:
     print abs_line
     plt.title(abs_line)
     median_hist = np.nanmedian(symmetry_results[abs_line])
-    hist_vals, hist_bins, _ = plt.hist(symmetry_results[abs_line], bins=300, range=(median_hist - 0.15, median_hist + 0.15))
-    # hist_vals, hist_bins, _ = plt.hist(symmetry_results[abs_line], bins=300, range=(-2, 2.))
-    # plt.xlim((-2, 2.))
+    # hist_vals, hist_bins, _ = plt.hist(symmetry_results[abs_line], bins=300, range=(median_hist - 0.25, median_hist + 0.25))
+    hist_vals, hist_bins, _ = plt.hist(symmetry_results[abs_line], bins=300, range=(-1.5, 1.5))
+    # plt.xlim((-1.5, 1.5))
     # plt.ylim((0, 35000))
     plt.xlabel('Symmetry coefficient value')
     plt.ylabel('Symmetry distribution')
-    plt.savefig(abs_line+'_4.png', dpi=200)
+    plt.savefig(abs_line+'_3.png', dpi=300)
     plt.close()
+
+    # plt.scatter(ew_results[abs_line], symmetry_results[abs_line], lw=0, s=1, alpha=0.05)
+    # plt.xlim((np.nanpercentile(ew_results[abs_line], 1), np.nanpercentile(ew_results[abs_line], 99)))
+    # plt.ylim((np.nanpercentile(symmetry_results[abs_line], 1), np.nanpercentile(symmetry_results[abs_line], 99)))
+    # plt.xlabel('Line EW value')
+    # plt.ylabel('Symmetry coefficient value')
+    # plt.savefig(abs_line + '_ew.png', dpi=300)
+    # plt.close()
+    #
+    # for colour_col in ['teff_guess', 'feh_guess', 'logg_guess']:
+    #     plt.title(colour_col)
+    #     c_data = galah_param[colour_col]
+    #     plt.scatter(ew_results[abs_line], symmetry_results[abs_line], lw=0, s=0.2, c=c_data, cmap='jet',
+    #                 vmin=np.percentile(c_data, 2), vmax=np.percentile(c_data, 98))
+    #     plt.xlim((np.nanpercentile(ew_results[abs_line], 1), np.nanpercentile(ew_results[abs_line], 99)))
+    #     plt.ylim((np.nanpercentile(symmetry_results[abs_line], 1), np.nanpercentile(symmetry_results[abs_line], 99)))
+    #     plt.xlabel('Line EW value')
+    #     plt.ylabel('Symmetry coefficient value')
+    #     plt.colorbar()
+    #     plt.savefig(abs_line + '_ew_'+colour_col+'.png', dpi=300)
+    #     plt.close()
+
     # txt.write(abs_line+' '+str(np.max(hist_vals))+' '+str(np.nanstd(symmetry_results[abs_line]))+' '+str(np.nanmedian(symmetry_results[abs_line]))+'\n')
 # txt.close()
